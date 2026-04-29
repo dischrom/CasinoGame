@@ -37,3 +37,9 @@ roulette_play_again_kb = InlineKeyboardMarkup(inline_keyboard=[
 
 #-----------------ROULETTE KEYBOARDS-----------------------------------------------------------
 
+#====================BLACK JACK KEYBOARDS======================================================
+
+blackjack_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Back", callback_data="back_in_blackjack"), InlineKeyboardButton(text="Back to menu", callback_data="back_to_menu")]
+])
+#=========================BLACK JACK KEYBOARDS=================================================

@@ -37,15 +37,15 @@ class Card:
 
     def get_value(self) -> int:
         """Возвращает значение карты"""
-        if self.rank in ["J", "Q", "K"]:
+        if self.rank in [Rank.JACK, Rank.QUEEN, Rank.KING]:
             return 10
-        elif self.rank == "A":
-            return 11  # По умолчанию туз = 11
+        elif self.rank == Rank.ACE:
+            return 11
         else:
-            return int(self.rank)
+            return int(self.rank.value)
 
     def __str__(self) -> str:
-        return f"{self.rank}{self.suit}"
+        return f"{self.rank.value}{self.suit.value}"
 
 
 class Deck:
@@ -57,6 +57,7 @@ class Deck:
 
     def create_deck(self):
         """Создать полную колоду (52 карты)"""
+        self.cards = []
         for suit in Suit:
             for rank in Rank:
                 self.cards.append(Card(suit, rank))
@@ -64,7 +65,7 @@ class Deck:
 
     def draw_card(self) -> Card:
         """Вытащить карту из колоды"""
-        if len(self.cards) < 10:  # Если карт осталось мало, пересоздаём колоду
+        if len(self.cards) < 10:
             self.create_deck()
         return self.cards.pop()
 
@@ -84,15 +85,13 @@ class Hand:
         total = 0
         aces = 0
 
-        # Считаем сумму (все тузы считаются как 11)
         for card in self.cards:
-            if card.rank == "A":
+            if card.rank == Rank.ACE:
                 aces += 1
             total += card.get_value()
 
-        # Если сумма больше 21 и есть тузы, считаем их как 1
         while total > 21 and aces > 0:
-            total -= 10  # Туз 11 становится тузом 1 (11 - 10 = 1)
+            total -= 10
             aces -= 1
 
         return total
@@ -125,7 +124,6 @@ class BlackjackGame:
         self.player_hand = Hand()
         self.dealer_hand = Hand()
 
-        # Раздаём по 2 карты
         self.player_hand.add_card(self.deck.draw_card())
         self.dealer_hand.add_card(self.deck.draw_card())
         self.player_hand.add_card(self.deck.draw_card())
@@ -135,7 +133,7 @@ class BlackjackGame:
         info += f"🎴 Карта дилера: {self.dealer_hand.cards[0]} + ?\n\n"
 
         if self.player_hand.is_blackjack():
-            info += "🎉 БЛЭКДЖЕК! Вы выиграли!"
+            info += "🎉 БЛЭКДЖЕК!"
             return info
 
         info += "Выберите действие: Hit / Stand / Double"
@@ -148,21 +146,50 @@ class BlackjackGame:
 
         if self.player_hand.is_bust():
             info += "💥 Перебор! Вы проиграли."
-            return info, True  # Игра закончена
+            return info, True
 
         info += "Выберите действие: Hit / Stand"
         return info, False
 
+    def double(self) -> Tuple[str, bool]:
+        """Удвоить ставку и взять одну карту"""
+        self.player_bet *= 2
+        self.player_hand.add_card(self.deck.draw_card())
+
+        info = f"🎴 Ваша рука: {self.player_hand}\n"
+
+        if self.player_hand.is_bust():
+            info += "💥 Перебор! Дилер выиграл."
+            return info, True
+
+        # Автоматический stand после double
+        while self.dealer_hand.get_value() < 17:
+            self.dealer_hand.add_card(self.deck.draw_card())
+
+        info += f"🎴 Рука дилера: {self.dealer_hand}\n\n"
+
+        player_value = self.player_hand.get_value()
+        dealer_value = self.dealer_hand.get_value()
+
+        if self.dealer_hand.is_bust():
+            info += "💥 Дилер перебрал! Вы выиграли! 🎉"
+        elif player_value > dealer_value:
+            info += "Вы выиграли! 🎉"
+        elif player_value == dealer_value:
+            info += "Ничья. 🤝"
+        else:
+            info += "Дилер выиграл. 😔"
+
+        return info, True
+
     def stand(self) -> Tuple[str, int]:
         """Остановиться и ход дилера"""
-        # Ход дилера
         while self.dealer_hand.get_value() < 17:
             self.dealer_hand.add_card(self.deck.draw_card())
 
         info = f"🎴 Ваша рука: {self.player_hand}\n"
         info += f"🎴 Рука дилера: {self.dealer_hand}\n\n"
 
-        # Определяем результат
         player_value = self.player_hand.get_value()
         dealer_value = self.dealer_hand.get_value()
 
@@ -180,16 +207,3 @@ class BlackjackGame:
             winnings = 0
 
         return info, winnings
-
-    def double_down(self) -> Tuple[str, int]:
-        """Удвоить ставку и взять одну карту"""
-        self.player_bet *= 2
-        self.player_hand.add_card(self.deck.draw_card())
-
-        if self.player_hand.is_bust():
-            info = f"🎴 Ваша рука: {self.player_hand}\n\n"
-            info += "💥 Перебор! Вы проиграли."
-            return info, 0
-
-        # Сразу ход дилера (после double down обычно стоп)
-        return self.stand()
